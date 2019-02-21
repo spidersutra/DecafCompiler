@@ -32,7 +32,7 @@ def printToken(token):
         outTokenString += " is"
         outTokenString += " " + token.flavor
         if "Constant" in token.flavor:
-            outTokenString += "(value = " + token.text + ")"
+            outTokenString += " (value = " + token.text + ")"
         print(outTokenString)
 
 
@@ -103,7 +103,36 @@ def alphaStart(stateDeets):
             #if stateDeets.pos >= len(stateDeets.fileContents)-1:
             #    return buildToken(goingMerry, "T_Identifier", line,colStart,colEnd,stateDeets)
         
+def singleLineCommentStart(stateDeets):
+    #search for end of line then pass back control
+    done = False
+    while not done:
+        if stateDeets.pos >= len(stateDeets.fileContents): # ask about this behavior
+            return stateDeets
+        c = stateDeets.fileContents[stateDeets.pos]
+        stateDeets.updateDeets(c)
+        if c == '\n':
+            return stateDeets
+            
+
+def multiLineCommentStart(stateDeets):
+    #search for string "*/" then pass back control
+    done = False
+    endingPrimed = False
+    while not done:
+        if stateDeets.pos >= len(stateDeets.fileContents): # ask about this behavior
+            return stateDeets
+        c = stateDeets.fileContents[stateDeets.pos]
+        stateDeets.updateDeets(c)
+        if c == '*':
+            endingPrimed = True
+        elif c == '/' and endingPrimed:
+            return stateDeets 
+        elif c != '*':
+            endingPrimed = False #we need to find a * directly before our /
         
+
+
         
 def symbolCharStart(stateDeets):
     c = stateDeets.fileContents[stateDeets.pos]
@@ -112,6 +141,19 @@ def symbolCharStart(stateDeets):
     colStart = stateDeets.col
     colEnd = -1
     line = stateDeets.line
+
+    #determine if we're looking at a comment
+    if c == '/':
+        if stateDeets.pos < len(stateDeets.fileContents) - 1: #ensure we aren't at end of file
+            nextC = stateDeets.fileContents[stateDeets.pos + 1] 
+            if nextC == '/':
+                #go to single line comment
+                stateDeets.updateDeets(c)
+                return singleLineCommentStart(stateDeets)
+            elif nextC == '*':
+                #go to multi line comment
+                stateDeets.updateDeets(c)
+                return multiLineCommentStart(stateDeets)
 
     stateDeets.updateDeets(c)
 
@@ -139,7 +181,7 @@ def stringStart(stateDeets):
 
     stateDeets.updateDeets(c)
     while not done:
-        if stateDeets.pos >= len(stateDeets.fileContents)-1: #error, we got to the end of a file before the string was finished
+        if stateDeets.pos >= len(stateDeets.fileContents): #error, we got to the end of a file before the string was finished
             return buildToken(goingMerry, "unterminated string", line,colStart,colEnd,stateDeets)
         c = stateDeets.fileContents[stateDeets.pos]
         if c == '\n': #error, we skipped to a new line before the string was finished
@@ -150,15 +192,6 @@ def stringStart(stateDeets):
             stateDeets.updateDeets(c)
             if c == '\"':
                 return buildToken(goingMerry, "T_StringConstant", line,colStart,colEnd, stateDeets)
-
-        
-        
-
-
-
-
-
-    return stateDeets
 
 def digitStart(stateDeets):
     done = False
