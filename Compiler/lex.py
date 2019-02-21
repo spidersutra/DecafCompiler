@@ -37,7 +37,7 @@ def printToken(token):
 
 
 def printErrorToken(token):
-    print("\n")
+    print("")
     print("*** Error line " + str(token.line) + ".")
     if token.errorType == "too long":
         print("*** Identifier too long: " + "\"" + token.text + "\"" )
@@ -45,6 +45,10 @@ def printErrorToken(token):
         print(token.text + " line " + str(token.line) + " cols " + str(token.colStart) + "-" + str(token.colEnd) + " is " + token.flavor + " (truncated to " + token.text[0:31] +")")
     elif token.errorType == "unrecognized character":
         print("*** Unrecognized char: " + "\'" + token.text + "\'")
+        print("")
+    elif token.errorType == "unterminated string":
+        print("*** Unterminated string constant: " + token.text)
+        print("")
 
 def buildToken(text, flavor, line, colStart,colEnd,stateDeets):
 
@@ -62,6 +66,9 @@ def buildToken(text, flavor, line, colStart,colEnd,stateDeets):
     elif newToken.flavor == "Unrecognized":
         newToken.hasError = True
         newToken.errorType = "unrecognized character"
+    elif newToken.flavor == "unterminated string":
+        newToken.hasError = True
+        newToken.errorType = "unterminated string"
 
     stateDeets.tokenList.append(newToken)
     return stateDeets
@@ -83,9 +90,10 @@ def alphaStart(stateDeets):
         #break on breakchar or symbol
         if stateDeets.pos >= len(stateDeets.fileContents):
             return buildToken(goingMerry, "T_Identifier", line,colStart,colEnd,stateDeets)
+
         c = stateDeets.fileContents[stateDeets.pos]
         
-        if c in stateDeets.breakChars or c in stateDeets.symbolChars:
+        if c in stateDeets.breakChars or c in stateDeets.symbolChars or c == '\"':
             colEnd = stateDeets.col - 1
             return buildToken(goingMerry, "T_Identifier", line,colStart,colEnd,stateDeets)
         else:
@@ -119,7 +127,39 @@ def symbolCharStart(stateDeets):
         return buildToken(goingMerry,"\'" + goingMerry + "\'",line,colStart,colEnd,stateDeets)
     else:
         return buildToken(goingMerry,"\'" + goingMerry + "\'",line,colStart,colStart,stateDeets)
+
+def stringStart(stateDeets):
+    done = False
+    c = stateDeets.fileContents[stateDeets.pos]
+    goingMerry = ""
+    goingMerry += str(c)
+    colStart = stateDeets.col
+    colEnd = -1
+    line = stateDeets.line
+
+    stateDeets.updateDeets(c)
+    while not done:
+        if stateDeets.pos >= len(stateDeets.fileContents)-1: #error, we got to the end of a file before the string was finished
+            return buildToken(goingMerry, "unterminated string", line,colStart,colEnd,stateDeets)
+        c = stateDeets.fileContents[stateDeets.pos]
+        if c == '\n': #error, we skipped to a new line before the string was finished
+            return buildToken(goingMerry, "unterminated string", line,colStart,colEnd,stateDeets)
+        else: #return terminated string
+            goingMerry += str(c)
+            colEnd = stateDeets.col
+            stateDeets.updateDeets(c)
+            if c == '\"':
+                return buildToken(goingMerry, "T_StringConstant", line,colStart,colEnd, stateDeets)
+
         
+        
+
+
+
+
+
+    return stateDeets
+
 def digitStart(stateDeets):
     done = False
     hasDot = False
@@ -169,30 +209,26 @@ def spookyStart(stateDeets):
 
 
 
+
+
 def buildTokenList(_fileContents):
     stateDeets = StateDeets()
     stateDeets.fileContents = _fileContents
 
     while stateDeets.pos < len(stateDeets.fileContents):
         c = stateDeets.fileContents[stateDeets.pos]
-        #print(c)
         if c in stateDeets.breakChars:
             stateDeets.updateDeets(c)
-            #print("a")
         elif c.isalpha():
-            #print("b")
             stateDeets = alphaStart(stateDeets)
-        elif c in stateDeets.symbolChars:
-            #print("c")
+        elif c in stateDeets.symbolChars and c is not '\"':
             stateDeets = symbolCharStart(stateDeets)
+        elif c == '\"':
+            stateDeets = stringStart(stateDeets)
         elif c.isdigit():
             stateDeets = digitStart(stateDeets)
         else:
-            #print("d")
-            stateDeets = spookyStart(stateDeets)
-
-          
-        #print(c)  
+            stateDeets = spookyStart(stateDeets)  
     return stateDeets.tokenList
         
 
