@@ -8,6 +8,8 @@ class StateDeets:
     tokenList = []
     breakChars = [' ', '\n','','\t']
     symbolChars = ['+', '-', '*', '/', '%', '<', "<=", '>', ">=", '=', "==","!=","&&","||","!",";",",",'.',"(",")","{","}"]
+    nonSoloSymbolChars = ['&','|']
+    reservedWords = ["void","int","double","bool","string","null","for","while","if","else","return","break","Print","ReadInteger","ReadLine"]
     def updateDeets(self,c):
         self.pos+=1
         self.col += 1
@@ -58,6 +60,11 @@ def buildToken(text, flavor, line, colStart,colEnd,stateDeets):
     newToken.line = line
     newToken.colStart = colStart
     newToken.colEnd = colEnd
+
+    if newToken.text in stateDeets.reservedWords:
+        newToken.flavor = "T_" + newToken.text.capitalize()
+    elif newToken.text == "true" or newToken.text == "false":
+        newToken.flavor = "T_BoolConstant"
 
     #check for errors
     if len(newToken.text) > 31:
@@ -131,8 +138,6 @@ def multiLineCommentStart(stateDeets):
         elif c != '*':
             endingPrimed = False #we need to find a * directly before our /
         
-
-
         
 def symbolCharStart(stateDeets):
     c = stateDeets.fileContents[stateDeets.pos]
@@ -155,6 +160,45 @@ def symbolCharStart(stateDeets):
                 stateDeets.updateDeets(c)
                 return multiLineCommentStart(stateDeets)
 
+    elif stateDeets.pos < len(stateDeets.fileContents) - 1:
+        nextC = stateDeets.fileContents[stateDeets.pos + 1]
+        colEnd = stateDeets.col 
+        if c == '=':
+            #check ==
+            if nextC == '=':
+                stateDeets.updateDeets(c)
+                colEnd = stateDeets.col 
+                stateDeets.updateDeets(nextC)
+                return buildToken("==", "==",line,colStart,colEnd,stateDeets)
+        elif c == '>':
+            #check >=
+            if nextC == '=':
+                stateDeets.updateDeets(c)
+                colEnd = stateDeets.col 
+                stateDeets.updateDeets(nextC)
+                return buildToken(">=", ">=",line,colStart,colEnd,stateDeets)
+        elif c == '<':
+            #check <=
+            if nextC == '=':
+                stateDeets.updateDeets(c)
+                colEnd = stateDeets.col 
+                stateDeets.updateDeets(nextC)
+                return buildToken("<=", "<=",line,colStart,colEnd,stateDeets)
+        elif c == '!':
+            #check !=
+            if nextC == '=':
+                stateDeets.updateDeets(c)
+                colEnd = stateDeets.col 
+                stateDeets.updateDeets(nextC)
+                return buildToken("!=", "!=",line,colStart,colEnd,stateDeets)
+        elif c == '&':
+            #check &&
+            if nextC == '&':
+                stateDeets.updateDeets(c)
+                colEnd = stateDeets.col 
+                stateDeets.updateDeets(nextC)
+                return buildToken("&&", "&&",line,colStart,colEnd,stateDeets)
+
     stateDeets.updateDeets(c)
 
     if stateDeets.pos == len(stateDeets.fileContents)-1:
@@ -164,7 +208,7 @@ def symbolCharStart(stateDeets):
     nextC = stateDeets.fileContents[stateDeets.pos]
     if goingMerry + str(nextC) in stateDeets.symbolChars:
         goingMerry += str(nextC)
-        colEnd = stateDeets.colEnd
+        colEnd = stateDeets.col
         stateDeets.updateDeets(nextC)
         return buildToken(goingMerry,"\'" + goingMerry + "\'",line,colStart,colEnd,stateDeets)
     else:
@@ -254,7 +298,7 @@ def buildTokenList(_fileContents):
             stateDeets.updateDeets(c)
         elif c.isalpha():
             stateDeets = alphaStart(stateDeets)
-        elif c in stateDeets.symbolChars and c is not '\"':
+        elif (c in stateDeets.symbolChars or c in stateDeets.nonSoloSymbolChars) and c is not '\"':
             stateDeets = symbolCharStart(stateDeets)
         elif c == '\"':
             stateDeets = stringStart(stateDeets)
