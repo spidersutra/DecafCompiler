@@ -7,3 +7,5 @@ class Token:
     colEnd = -1
     line = -1
     flavor = "NO_FLAVOR_SPECIFIED"
+    errorType = ""
+    hasError = False

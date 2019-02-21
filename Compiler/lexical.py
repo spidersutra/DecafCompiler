@@ -3,24 +3,63 @@ from token import Token
 breakChars = [' ', '\n','','\t']
 symbolChars = ['+', '-', '*', '/', '%', '<', "<=", '>', ">=", '=', "==","!=","&&","||","!",";",",",'.',"(",")","{","}"]
 
+
 def writeTokens(fileName,tokenList):
     outFile = open(fileName,"w")
     for token in tokenList:
-        outTokenString = token.name
-        outTokenString += "         "
-        outTokenString += " line " + str(token.line)
-        outTokenString += " cols " + str(token.colStart) + "-" +str(token.colEnd)
-        outTokenString += " is"
-        outTokenString += " " + token.flavor
+        outTokenString = ""
+        if token.hasError:
+            outTokenString += "\n*** Error line " + str(token.line) + "." + "\n"
+            if token.errorType == "too long":
+                outTokenString += "*** Identifier too long: " + "\"" + token.name + "\"" + "\n\n"
+            elif token.errorType == "unrecognized char":
+                outTokenString += "*** Unrecognized char: \'" + token.name + "\'\n\n"
+
+        if token.errorType != "unrecognized char":
+            print(token.errorType)        
+            outTokenString += token.name
+            outTokenString += "         "
+            outTokenString += " line " + str(token.line)
+            outTokenString += " cols " + str(token.colStart) + "-" +str(token.colEnd)
+            outTokenString += " is"
+            outTokenString += " " + token.flavor
+
+        if token.errorType == "too long":
+            outTokenString += " (truncated to " + token.name[0:31] + ")"
+
         if "Constant" in token.flavor:
             outTokenString += " (value = " + token.name + ")"
+        
         outTokenString += "\n"
         outFile.write(outTokenString)
 
-def buildToken(tokenString, line, colStart, colEnd):
-    print("BUILDING TOKEN " + tokenString)
+def checkForStringEnd(c):
+    if c == '\"':
+        return "complete"
+    elif c == '\n':
+        return "failure"
+    else:
+        return "still going"
+
+
+def buildUnrecognizedCharacterToken(charString, line):
     newToken = Token()
+    newToken.line = line
+    newToken.name = charString
+    newToken.hasError = True
+    newToken.errorType = "unrecognized char"
+    return newToken
+
+def buildToken(tokenString, line, colStart, colEnd):
+    #print("BUILDING TOKEN " + tokenString)
+    newToken = Token()
+
     newToken.name = tokenString
+    if len(tokenString) > 31:
+        print("WE GOT AN ERROR BOYS")
+        newToken.hasError = True
+        newToken.errorType = "too long"
+
     newToken.line = line
     newToken.colEnd = colEnd
     newToken.colStart = colStart
@@ -35,6 +74,8 @@ def buildToken(tokenString, line, colStart, colEnd):
         newToken.flavor = "T_Identifier"
     return newToken
 
+stringMode = False
+commentMode = False
 def buildTokenList(fileContents):
     tokenList = []
     #iterate over file contents
@@ -45,10 +86,36 @@ def buildTokenList(fileContents):
     col = 0
     for c in fileContents:
         col += 1
-        print("CHAR: " + c + " COL: " + str(col))
-        if c in breakChars:
-            #print("BREAKING, PACK IT UP")
+        #check for spooky characters
+        if stringMode:
+            status = checkForStringEnd(c)
+            if status == "complete" or status == "failure":
+                stringMode = False
+                goingMerry += str(c)
+                #package string
+            elif status == "still going":
+                goingMerry += str(c)
+            else if status == "failure":
+                stringMode = False 
+                #package string with error
 
+        elif c == '\"':
+            if len(goingMerry) > 0:
+                colEnd = col-1
+                tokenList.append(buildToken(goingMerry,line,colStart,colEnd))
+                goingMerry = ""
+            colStart = col
+            goingMerry += str(c);
+            stringMode = True
+        elif not (c).isalpha() and not c.isdigit() and not c in symbolChars and not c in breakChars:
+            if len(goingMerry) > 0:
+                colEnd = col-1
+                tokenList.append(buildToken(goingMerry,line,colStart,colEnd))
+                goingMerry = ""
+            tokenList.append(buildUnrecognizedCharacterToken(c,line))
+            goingMerry = ""
+        elif c in breakChars:
+            #print("BREAKING, PACK IT UP")
             #package up what we have
             if len(goingMerry) > 0:
                 colEnd = col-1
@@ -56,7 +123,7 @@ def buildTokenList(fileContents):
                 goingMerry = ""
 
             if c == '\n':
-                print("RESETTING COL")
+                #print("RESETTING COL")
                 line += 1
                 col = 0
                 colStart = -1
@@ -83,7 +150,7 @@ def buildTokenList(fileContents):
             if len(goingMerry) == 0:
                 goingMerry += str(c)
                 colStart = col
-                print("ASSIGNED COL START: " + str(colStart))
+                #print("ASSIGNED COL START: " + str(colStart))
             elif goingMerry[0] not in symbolChars:
                 goingMerry += str(c)
             elif goingMerry[0] in symbolChars:
@@ -96,14 +163,17 @@ def buildTokenList(fileContents):
         else:
             if len(goingMerry) == 0:
                 colStart = col
-                goingMerry += str(c)
-            elif goingMerry[0].isdigit():
+            if len(goingMerry) > 0 and (goingMerry[0].isdigit() or goingMerry[0] in symbolChars):
                 colEnd = col-1
                 tokenList.append(buildToken(goingMerry,line,colStart,colEnd))
-                
                 colStart = col
                 goingMerry = ""
-                goingMerry += str(c)        
+                goingMerry += str(c)
+            else:
+                goingMerry += str(c)
+                #print(goingMerry)
+
+                    
         #increment values
 
     if len(goingMerry) > 0:
