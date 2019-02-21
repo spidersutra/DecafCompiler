@@ -85,6 +85,8 @@ def buildToken(tokenString, line, colStart, colEnd):
 def buildTokenList(fileContents):
     stringMode = False
     commentMode = False
+    commentStartPrimed = False
+    commentEndPrimed = False
     tokenList = []
     #iterate over file contents
     goingMerry = ""
@@ -95,6 +97,7 @@ def buildTokenList(fileContents):
     for c in fileContents:
         col += 1
         #check for spooky characters
+
         if stringMode:
             status = checkForStringEnd(c)
             if status == "complete":
@@ -152,7 +155,7 @@ def buildTokenList(fileContents):
                 goingMerry += str(c)
                 tokenList.append(buildToken(goingMerry,line,colStart,colEnd))
                 goingMerry=""
-            elif goingMerry[0].isdigit() and "." not in goingMerry:
+            elif goingMerry[0].isdigit() and "." not in goingMerry and c == '.': 
                 goingMerry += str(c)
             else:
                 colEnd = col-1
