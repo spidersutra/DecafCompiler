@@ -42,7 +42,9 @@ def printErrorToken(token):
     if token.errorType == "too long":
         print("*** Identifier too long: " + "\"" + token.text + "\"" )
         print("")
-        print(token.text + "line " + str(token.line) + " cols " + str(token.colStart) + "-" + str(token.colEnd) + " is " + token.flavor + " (truncated to " + token.text[0:31] +")")
+        print(token.text + " line " + str(token.line) + " cols " + str(token.colStart) + "-" + str(token.colEnd) + " is " + token.flavor + " (truncated to " + token.text[0:31] +")")
+    elif token.errorType == "unrecognized character":
+        print("*** Unrecognized char: " + "\'" + token.text + "\'")
 
 def buildToken(text, flavor, line, colStart,colEnd,stateDeets):
 
@@ -57,6 +59,9 @@ def buildToken(text, flavor, line, colStart,colEnd,stateDeets):
     if len(newToken.text) > 31:
         newToken.hasError = True
         newToken.errorType = "too long"
+    elif newToken.flavor == "Unrecognized":
+        newToken.hasError = True
+        newToken.errorType = "unrecognized character"
 
     stateDeets.tokenList.append(newToken)
     return stateDeets
@@ -76,9 +81,8 @@ def alphaStart(stateDeets):
     stateDeets.updateDeets(c)
     while not done:
         #break on breakchar or symbol
-        if stateDeets.pos >= len(stateDeets.fileContents)-1:
+        if stateDeets.pos >= len(stateDeets.fileContents):
             return buildToken(goingMerry, "T_Identifier", line,colStart,colEnd,stateDeets)
-
         c = stateDeets.fileContents[stateDeets.pos]
         
         if c in stateDeets.breakChars or c in stateDeets.symbolChars:
@@ -88,6 +92,8 @@ def alphaStart(stateDeets):
             goingMerry += str(c)
             colEnd = stateDeets.col -1
             stateDeets.updateDeets(c)
+            #if stateDeets.pos >= len(stateDeets.fileContents)-1:
+            #    return buildToken(goingMerry, "T_Identifier", line,colStart,colEnd,stateDeets)
         
         
         
@@ -153,6 +159,13 @@ def digitStart(stateDeets):
         return buildToken(goingMerry, "T_IntConstant", line,colStart,colEnd,stateDeets)
 
 
+def spookyStart(stateDeets):
+    c = stateDeets.fileContents[stateDeets.pos]
+    goingMerry = ""
+    goingMerry += str(c)
+    line = stateDeets.line
+    stateDeets.updateDeets(c)
+    return buildToken(goingMerry,"Unrecognized",line,-1,-1,stateDeets)
 
 
 
@@ -176,7 +189,8 @@ def buildTokenList(_fileContents):
             stateDeets = digitStart(stateDeets)
         else:
             #print("d")
-            stateDeets.updateDeets(c)
+            stateDeets = spookyStart(stateDeets)
+
           
         #print(c)  
     return stateDeets.tokenList
