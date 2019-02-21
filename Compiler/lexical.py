@@ -14,9 +14,10 @@ def writeTokens(fileName,tokenList):
                 outTokenString += "*** Identifier too long: " + "\"" + token.name + "\"" + "\n\n"
             elif token.errorType == "unrecognized char":
                 outTokenString += "*** Unrecognized char: \'" + token.name + "\'\n\n"
+            elif token.errorType == "unterminated string":
+                outTokenString += "*** Unterminated string constant: " + token.name + "\n"
 
-        if token.errorType != "unrecognized char":
-            print(token.errorType)        
+        if token.errorType != "unrecognized char" and token.errorType != "unterminated string":
             outTokenString += token.name
             outTokenString += "         "
             outTokenString += " line " + str(token.line)
@@ -63,6 +64,7 @@ def buildToken(tokenString, line, colStart, colEnd):
     newToken.line = line
     newToken.colEnd = colEnd
     newToken.colStart = colStart
+
     if tokenString[0] in symbolChars:
         newToken.flavor = "\'" + tokenString + "\'"
     elif tokenString[0].isdigit():
@@ -70,13 +72,19 @@ def buildToken(tokenString, line, colStart, colEnd):
             newToken.flavor = "T_DoubleConstant"
         else:
             newToken.flavor = "T_IntConstant"
+    elif tokenString[0] == '\"' and tokenString[len(tokenString)-1] == '\"' and len(tokenString) > 1:
+        newToken.flavor = "T_StringConstant"
+    elif tokenString[0] == '\"' and (tokenString[len(tokenString)-1] != '\"' or len(tokenString) == 1):
+        newToken.hasError = True
+        newToken.errorType = "unterminated string"
     else:
         newToken.flavor = "T_Identifier"
     return newToken
 
-stringMode = False
-commentMode = False
+
 def buildTokenList(fileContents):
+    stringMode = False
+    commentMode = False
     tokenList = []
     #iterate over file contents
     goingMerry = ""
@@ -89,16 +97,25 @@ def buildTokenList(fileContents):
         #check for spooky characters
         if stringMode:
             status = checkForStringEnd(c)
-            if status == "complete" or status == "failure":
+            if status == "complete":
                 stringMode = False
                 goingMerry += str(c)
+                colEnd = col
                 #package string
+                tokenList.append(buildToken(goingMerry,line,colStart,colEnd))
+                goingMerry = ""
             elif status == "still going":
                 goingMerry += str(c)
-            else if status == "failure":
-                stringMode = False 
+            elif status == "failure":
+                stringMode = False
+                colEnd = col-1
+                tokenList.append(buildToken(goingMerry,line,colStart,colEnd))
+                goingMerry = ""
+                line += 1
+                col = 0
+                colStart = -1
+                colEnd = -1
                 #package string with error
-
         elif c == '\"':
             if len(goingMerry) > 0:
                 colEnd = col-1
