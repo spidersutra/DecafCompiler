@@ -38,7 +38,7 @@ def printToken(token):
             if token.flavor == "T_IntConstant":
                 outTokenString += " (value = " + str(int(token.text)) + ")"
             elif token.flavor == "T_DoubleConstant":
-                outTokenString += " (value = " + str(Decimal(token.text)) + ")"
+                outTokenString += " (value = " + str(Decimal(token.text)).rstrip('0').rstrip('.') + ")"
             else:
                 outTokenString += " (value = " + token.text + ")"
         elif "Constant" in token.flavor and 'E' in token.text:
