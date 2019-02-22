@@ -61,13 +61,14 @@ def buildToken(text, flavor, line, colStart,colEnd,stateDeets):
     newToken.colStart = colStart
     newToken.colEnd = colEnd
 
+    #check for reserved ops
     if newToken.text in stateDeets.reservedWords:
-        newToken.flavor = "T_" + newToken.text.capitalize()
+        newToken.flavor = "T_" + str(newToken.text[0]).upper() + newToken.text[1:]
     elif newToken.text == "true" or newToken.text == "false":
         newToken.flavor = "T_BoolConstant"
 
     #check for errors
-    if len(newToken.text) > 31:
+    if len(newToken.text) > 31 and "Constant" not in newToken.flavor:
         newToken.hasError = True
         newToken.errorType = "too long"
     elif newToken.flavor == "Unrecognized":
@@ -240,6 +241,8 @@ def stringStart(stateDeets):
 def digitStart(stateDeets):
     done = False
     hasDot = False
+    hasE = False
+    hasPlus = False
     c = stateDeets.fileContents[stateDeets.pos]
     goingMerry = ""
     goingMerry += str(c)
@@ -255,11 +258,29 @@ def digitStart(stateDeets):
         #print(len(stateDeets.fileContents))
         c = stateDeets.fileContents[stateDeets.pos]
         #we can take numbers, a single .
-        if c == "." and not hasDot:
+        if c == '.' and not hasDot:
             hasDot = True
             goingMerry += str(c)
             colEnd = stateDeets.col - 1
             stateDeets.updateDeets(c)
+        elif c == 'E' and hasDot and not hasE and stateDeets.pos < len(stateDeets.fileContents)-2: #look ahead to ensure we have +NUM after this
+            cShouldBePlus = stateDeets.fileContents[stateDeets.pos+1]
+            cShouldBeNum = stateDeets.fileContents[stateDeets.pos+2]
+            if cShouldBePlus == '+' and cShouldBeNum.isdigit():
+                #yay, we can keep going
+                goingMerry += str(cShouldBePlus)
+                goingMerry += str(cShouldBeNum)
+                stateDeets.updateDeets(cShouldBePlus)
+                stateDeets.updateDeets(cShouldBePlus)
+                colEnd = stateDeets.col -1
+                hasE = True
+            else: #boo, straight into the trash it goes
+                done = True
+            hasE = True
+            goingMerry += str(c)
+            colEnd = stateDeets.col -1
+            stateDeets.updateDeets(c)
+            
         elif c in stateDeets.breakChars or c in stateDeets.symbolChars:
             done = True
         elif c.isdigit():
