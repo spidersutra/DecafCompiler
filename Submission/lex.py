@@ -35,11 +35,23 @@ def printToken(token):
         outTokenString += " is"
         outTokenString += " " + token.flavor
         if "Constant" in token.flavor and 'E' not in token.text:
-            outTokenString += " (value = " + token.text + ")"
+            if token.flavor == "T_IntConstant":
+                outTokenString += " (value = " + str(int(token.text)) + ")"
+            elif token.flavor == "T_DoubleConstant":
+                outTokenString += " (value = " + str(Decimal(token.text)) + ")"
+            else:
+                outTokenString += " (value = " + token.text + ")"
         elif "Constant" in token.flavor and 'E' in token.text:
             baseNum = Decimal(token.text.split('E')[0])
             exponent = int(token.text.split('+')[1])
-            outTokenString += " (value = " + str(baseNum * 10**exponent) + ")"
+            decimalString = str(baseNum * 10**exponent)
+            fixedDecimalString = ""
+            if '.' in decimalString:
+                fixedDecimalString = decimalString.rstrip('0').rstrip('.')
+            else:
+                fixedDecimalString = decimalString
+
+            outTokenString += " (value = " + fixedDecimalString + ")"
 
             
         print(outTokenString)
@@ -177,21 +189,21 @@ def symbolCharStart(stateDeets):
                 stateDeets.updateDeets(c)
                 colEnd = stateDeets.col 
                 stateDeets.updateDeets(nextC)
-                return buildToken("==", "==",line,colStart,colEnd,stateDeets)
+                return buildToken("==", "T_Equal",line,colStart,colEnd,stateDeets)
         elif c == '>':
             #check >=
             if nextC == '=':
                 stateDeets.updateDeets(c)
                 colEnd = stateDeets.col 
                 stateDeets.updateDeets(nextC)
-                return buildToken(">=", ">=",line,colStart,colEnd,stateDeets)
+                return buildToken(">=", "T_GreaterEqual",line,colStart,colEnd,stateDeets)
         elif c == '<':
             #check <=
             if nextC == '=':
                 stateDeets.updateDeets(c)
                 colEnd = stateDeets.col 
                 stateDeets.updateDeets(nextC)
-                return buildToken("<=", "<=",line,colStart,colEnd,stateDeets)
+                return buildToken("<=", "T_LessEqual",line,colStart,colEnd,stateDeets)
         elif c == '!':
             #check !=
             if nextC == '=':
@@ -205,7 +217,7 @@ def symbolCharStart(stateDeets):
                 stateDeets.updateDeets(c)
                 colEnd = stateDeets.col 
                 stateDeets.updateDeets(nextC)
-                return buildToken("&&", "&&",line,colStart,colEnd,stateDeets)
+                return buildToken("&&", "T_And",line,colStart,colEnd,stateDeets)
             else:
                 stateDeets.updateDeets(c)
                 return buildToken("&","Unrecognized",line,colStart,colEnd,stateDeets)
@@ -214,10 +226,10 @@ def symbolCharStart(stateDeets):
                 stateDeets.updateDeets(c)
                 colEnd = stateDeets.col 
                 stateDeets.updateDeets(nextC)
-                return buildToken("||", "||",line,colStart,colEnd,stateDeets)
+                return buildToken("||", "T_Or",line,colStart,colEnd,stateDeets)
             else:
                 stateDeets.updateDeets(c)
-                return buildToken("&","Unrecognized",line,colStart,colEnd,stateDeets)
+                return buildToken("|","Unrecognized",line,colStart,colEnd,stateDeets)
 
 
 

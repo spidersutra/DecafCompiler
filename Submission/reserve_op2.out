@@ -23,7 +23,7 @@ false          line 12 cols 1-5 is T_BoolConstant (value = false)
 }          line 24 cols 1-1 is '}'
 (          line 25 cols 1-1 is '('
 )          line 26 cols 1-1 is ')'
-||          line 27 cols 1-2 is ||
-<=          line 28 cols 1-2 is <=
->=          line 29 cols 1-2 is >=
-==          line 30 cols 1-2 is ==
+||          line 27 cols 1-2 is '||'
+<=          line 28 cols 1-2 is T_LessEqual
+>=          line 29 cols 1-2 is T_GreaterEqual
+==          line 30 cols 1-2 is T_Equal
