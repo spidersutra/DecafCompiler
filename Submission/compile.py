@@ -1,5 +1,4 @@
 import sys
-import lexical
 import lex
 
 def compile(fname):

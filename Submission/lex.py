@@ -1,4 +1,5 @@
 from token import Token
+from decimal import Decimal
 
 class StateDeets:
     pos = 0 #positon of the character we are looking ahead at
@@ -33,8 +34,18 @@ def printToken(token):
         outTokenString += " cols " + str(token.colStart) + "-" +str(token.colEnd)
         outTokenString += " is"
         outTokenString += " " + token.flavor
-        if "Constant" in token.flavor:
+        if "Constant" in token.flavor and 'E' not in token.text:
             outTokenString += " (value = " + token.text + ")"
+        elif "Constant" in token.flavor and 'E' in token.text:
+            i=1
+            # break down to get the real value
+            #print(token.text)
+            #print(token.text.split('E')[0])
+            baseNum = Decimal(token.text.split('E')[0])
+            exponent = int(token.text.split('+')[1])
+            outTokenString += " (value = " + str(baseNum * 10**exponent) + ")"
+
+            
         print(outTokenString)
 
 
@@ -268,18 +279,21 @@ def digitStart(stateDeets):
             cShouldBeNum = stateDeets.fileContents[stateDeets.pos+2]
             if cShouldBePlus == '+' and cShouldBeNum.isdigit():
                 #yay, we can keep going
+                goingMerry += str(c)
                 goingMerry += str(cShouldBePlus)
                 goingMerry += str(cShouldBeNum)
+                stateDeets.updateDeets(c)
                 stateDeets.updateDeets(cShouldBePlus)
                 stateDeets.updateDeets(cShouldBePlus)
                 colEnd = stateDeets.col -1
                 hasE = True
             else: #boo, straight into the trash it goes
                 done = True
+            
             hasE = True
-            goingMerry += str(c)
-            colEnd = stateDeets.col -1
-            stateDeets.updateDeets(c)
+            #goingMerry += str(c)
+            #colEnd = stateDeets.col -1
+            
             
         elif c in stateDeets.breakChars or c in stateDeets.symbolChars:
             done = True
