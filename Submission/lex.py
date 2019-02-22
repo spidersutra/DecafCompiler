@@ -8,7 +8,7 @@ class StateDeets:
     fileContents = ""
     tokenList = []
     breakChars = [' ', '\n','','\t']
-    symbolChars = ['+', '-', '*', '/', '%', '<', "<=", '>', ">=", '=', "==","!=","&&","||","!",";",",",'.',"(",")","{","}"]
+    symbolChars = ['+', '-', '*', '/', '%', '<', "<=", '>', ">=", '=', "==","!=","&&","||",'!',';',',','.','(',')','{','}']
     nonSoloSymbolChars = ['&','|']
     reservedWords = ["void","int","double","bool","string","null","for","while","if","else","return","break","Print","ReadInteger","ReadLine"]
     def updateDeets(self,c):
@@ -37,10 +37,6 @@ def printToken(token):
         if "Constant" in token.flavor and 'E' not in token.text:
             outTokenString += " (value = " + token.text + ")"
         elif "Constant" in token.flavor and 'E' in token.text:
-            i=1
-            # break down to get the real value
-            #print(token.text)
-            #print(token.text.split('E')[0])
             baseNum = Decimal(token.text.split('E')[0])
             exponent = int(token.text.split('+')[1])
             outTokenString += " (value = " + str(baseNum * 10**exponent) + ")"
@@ -117,7 +113,7 @@ def alphaStart(stateDeets):
             return buildToken(goingMerry, "T_Identifier", line,colStart,colEnd,stateDeets)
         else:
             goingMerry += str(c)
-            colEnd = stateDeets.col -1
+            colEnd = stateDeets.col
             stateDeets.updateDeets(c)
             #if stateDeets.pos >= len(stateDeets.fileContents)-1:
             #    return buildToken(goingMerry, "T_Identifier", line,colStart,colEnd,stateDeets)
@@ -210,6 +206,20 @@ def symbolCharStart(stateDeets):
                 colEnd = stateDeets.col 
                 stateDeets.updateDeets(nextC)
                 return buildToken("&&", "&&",line,colStart,colEnd,stateDeets)
+            else:
+                stateDeets.updateDeets(c)
+                return buildToken("&","Unrecognized",line,colStart,colEnd,stateDeets)
+        elif c == '|':
+            if nextC == '|':
+                stateDeets.updateDeets(c)
+                colEnd = stateDeets.col 
+                stateDeets.updateDeets(nextC)
+                return buildToken("||", "||",line,colStart,colEnd,stateDeets)
+            else:
+                stateDeets.updateDeets(c)
+                return buildToken("&","Unrecognized",line,colStart,colEnd,stateDeets)
+
+
 
     stateDeets.updateDeets(c)
 
